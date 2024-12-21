@@ -1,84 +1,67 @@
 #include <Arduino.h>
 // #include "animate.h"
 #include "display.h"
-#include <Adafruit_MPU6050.h>
-#include <Adafruit_Sensor.h>
-#include <Wire.h>
+#include "movement.h"
 
-// // Define your custom I2C pins
-// #define SDA_PIN 8
-// #define SCL_PIN 3
-// // Thresholds for shake intensity
-// #define LIGHT_SHAKE_THRESHOLD 2.0 // Adjust based on testing
-// #define MEDIUM_SHAKE_THRESHOLD 5.0
-// #define HARD_SHAKE_THRESHOLD 8.0
+void logMPUData() {
+  sensors_event_t accel, gyro, temp;
+  mpu.getEvent(&accel, &gyro, &temp);
 
-// Adafruit_MPU6050 mpu;
+  ShakeLevel shake = detectShake(accel.acceleration.x, accel.acceleration.y, accel.acceleration.z, gyro.gyro.x, gyro.gyro.y, gyro.gyro.z);
 
-// Variable to store the last detected shake intensity
-// String lastShakeMessage = "";
+  switch (shake) {
+    case HARD_SHAKE:
+      Serial.println("Hard Shake Detected!");
+      break;
+    case MEDIUM_SHAKE:
+      Serial.println("Medium Shake Detected!");
+      break;
+    case LIGHT_SHAKE:
+      Serial.println("Light Shake Detected!");
+      break;
+    case NO_SHAKE:
+    default:
+      // No shake detected
+      break;
+  }
+
+    // Update element position and retrieve the position data
+  PositionData position = updateElementPosition(accel.acceleration.x, accel.acceleration.y, gyro.gyro.x, gyro.gyro.y, 0.01);
+
+  // Log the position data
+  Serial.print("Logical Position - X: ");
+  Serial.print(position.logicalX);
+  Serial.print(", Y: ");
+  Serial.println(position.logicalY);
+
+  Serial.print("Movement Applied - Delta X: ");
+  Serial.print(position.deltaX);
+  Serial.print(", Delta Y: ");
+  Serial.println(position.deltaY);
+
+  OrientationData orientation = calculateOrientation(accel.acceleration.x, accel.acceleration.y, accel.acceleration.z, gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, 0.01);
+
+  Serial.print("Orientation - Yaw: ");
+  Serial.print(orientation.yaw);
+  Serial.print("°, Pitch: ");
+  Serial.print(orientation.pitch);
+  Serial.print("°, Roll: ");
+  Serial.println(orientation.roll);
+}
 
 void setup() {
   Serial.begin(115200);
   delay(2000); // Give serial time to start
-  // // Initialize Wire with custom pins
-  // Wire.begin(SDA_PIN, SCL_PIN);
-  // // Initialize the MPU6050 with the customized Wire instance
-  // if (!mpu.begin(0x68, &Wire)) { // 0x68 is the default I2C address for the
-  // MPU6050
-  //   Serial.println("Failed to find MPU6050 chip");
-  //   while (1) {
-  //     delay(10);
-  //   }
-  // }
-
-  // Serial.println("MPU6050 Found!");
-
   initializeOLED();
   displayBootMessage("ALXV");
+  initializeMPU6050();
   // initializeGIF();
 }
 
 void loop() {
   Serial.println("Hello world");
-  //   // playRandomGIF();
-  //   sensors_event_t accel, gyro, temp;
-  //   mpu.getEvent(&accel, &gyro, &temp);
-
-  //   // Calculate the magnitude of acceleration
-  //   float magnitude = sqrt(sq(accel.acceleration.x) +
-  //                          sq(accel.acceleration.y) +
-  //                          sq(accel.acceleration.z));
-
-  //   // Remove gravity (approximately 9.8 m/s²)
-  //   float dynamicMagnitude = abs(magnitude - 9.8);
-
-  //  // Determine shake intensity
-  //   String shakeMessage = "";
-  //   if (dynamicMagnitude > HARD_SHAKE_THRESHOLD) {
-  //     shakeMessage = "Hard Shake Detected!";
-  //   } else if (dynamicMagnitude > MEDIUM_SHAKE_THRESHOLD) {
-  //     shakeMessage = "Medium Shake Detected!";
-  //   } else if (dynamicMagnitude > LIGHT_SHAKE_THRESHOLD) {
-  //     shakeMessage = "Light Shake Detected!";
-  //   }
-
-  //   // Update OLED only if the message changes
-  //   if (shakeMessage != lastShakeMessage && shakeMessage != "") {
-  //     lastShakeMessage = shakeMessage;
-
-  //     // Clear the area where the text will appear
-  //     oled.fillRect(0, 0, DISPLAY_WIDTH, 20, TFT_BLACK);
-
-  //     // Display the shake message
-  //     oled.setCursor(2, 2); // Adjust the position as needed
-  //     oled.setTextColor(TFT_WHITE);
-  //     oled.println(shakeMessage);
-
-  //     // Print to Serial Monitor (optional for debugging)
-  //     Serial.println(shakeMessage);
-  //   }
-
+  
   // playRandomGIF();
-  delay(50); // Adjust delay as needed for responsiveness
+  logMPUData();
+  delay(100); // Adjust delay as needed for responsiveness
 }
