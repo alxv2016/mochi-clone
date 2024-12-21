@@ -1,35 +1,69 @@
-#include "screen-animate.h"
+#include "animate.h"
+#include "display.h"
 
-BB_SPI_LCD oled;
+// Global variables and constants
 AnimatedGIF gif;
-GIFContext gifContext = {&oled, nullptr, 0, 0};
+GIFContext gifContext = {&oled, nullptr, 0, 0}; // Context for GIF drawing
+// Assume maximum canvas size for all GIFs
+const size_t maxCanvasWidth = GIF_WIDTH; // Max width of GIFs
+const size_t maxCanvasHeight = GIF_HEIGHT; // Max height of GIFs
+const size_t frameBufferSize = maxCanvasWidth * maxCanvasHeight * 2;  // 2 bytes per pixel (RGB565)
 
-// Array to store GIFs
-GIFData gifFiles[TOTAL_GIFS] = {
-    { (uint8_t*)LOOK_EMOTE, sizeof(LOOK_EMOTE) },
-    { (uint8_t*)LAUGH_EMOTE, sizeof(LAUGH_EMOTE) },
-    { (uint8_t*)CRY_EMOTE, sizeof(CRY_EMOTE) },
+GIFData gifFiles[] = {
+    { (uint8_t*)LOOK_LEFT_RIGHT_EMOTE, sizeof(LOOK_LEFT_RIGHT_EMOTE) },
+    { (uint8_t*)LOOK_UP_DOWN_EMOTE, sizeof(LOOK_UP_DOWN_EMOTE) },
+    { (uint8_t*)UWU_EMOTE, sizeof(UWU_EMOTE) },
+    { (uint8_t*)SLEEPY_EMOTE, sizeof(SLEEPY_EMOTE) },
+    { (uint8_t*)SIGH_EMOTE, sizeof(SIGH_EMOTE) },
     { (uint8_t*)SHOCK_EMOTE, sizeof(SHOCK_EMOTE) },
-    { (uint8_t*)KIDDY_EMOTE, sizeof(KIDDY_EMOTE) }
+    { (uint8_t*)PERVE_EMOTE, sizeof(PERVE_EMOTE) },
+    { (uint8_t*)MISCHIEF_EMOTE, sizeof(MISCHIEF_EMOTE) },
+    { (uint8_t*)LAUGH_EMOTE, sizeof(LAUGH_EMOTE) },
+    { (uint8_t*)KISSY_EMOTE, sizeof(KISSY_EMOTE) },
+    { (uint8_t*)JUDGE_EMOTE, sizeof(JUDGE_EMOTE) },
+    { (uint8_t*)DIZZY_EMOTE, sizeof(DIZZY_EMOTE) },
+    { (uint8_t*)CRY_EMOTE, sizeof(CRY_EMOTE) },
+    { (uint8_t*)ANGRY_EMOTE, sizeof(ANGRY_EMOTE) },
+    // Add other GIFs here (up to 15)
 };
+void printMemoryStats() {
+    Serial.printf("Free heap: %u bytes\n", heap_caps_get_free_size(MALLOC_CAP_DEFAULT));
+    Serial.printf("Free PSRAM: %u bytes\n", heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+}
 
-// Get the width and height of the GIF canvas (the dimensions of the GIFimage).
-int canvasWidth = gif.getCanvasWidth();
-int canvasHeight = gif.getCanvasHeight();
+void initializeGIF() { 
+  gif.begin(GIF_PALETTE_RGB565_LE); 
+    // Allocate shared frame buffer in PSRAM (only once during initialization)
+  if (gifContext.sharedFrameBuffer == nullptr) {
+    gifContext.sharedFrameBuffer = (uint8_t *)heap_caps_malloc(frameBufferSize, MALLOC_CAP_8BIT);
+    if (!gifContext.sharedFrameBuffer) {
+        Serial.println("Error: Failed to allocate shared frame buffer in PSRAM.");
+    }
+  }
+  printMemoryStats();
+}
 
 void cleanupGIFContext() {
-  if (gifContext.frameBuffer) {
-    heap_caps_free(gifContext.frameBuffer);
-    gifContext.frameBuffer = nullptr;
+  if (gifContext.sharedFrameBuffer) {
+    heap_caps_free(gifContext.sharedFrameBuffer);
+    gifContext.sharedFrameBuffer = nullptr;
   }
   gif.close();
 }
 
 void GIFDraw(GIFDRAW *pDraw) {
   if (pDraw->y == 0) {
+    gifContext.oled->startWrite(); // Start the display write transaction
     gifContext.oled->setAddrWindow(gifContext.offsetX + pDraw->iX, gifContext.offsetY + pDraw->iY, pDraw->iWidth, pDraw->iHeight);
   }
-  gifContext.oled->pushPixels((uint16_t *)pDraw->pPixels, pDraw->iWidth, DRAW_TO_LCD | DRAW_WITH_DMA);
+      // Write the current line of pixels to the display
+    uint16_t *pixels = (uint16_t *)pDraw->pPixels;  // Cast pixel data to 16-bit format
+    gifContext.oled->writePixels(pixels, pDraw->iWidth);      // Write the entire line at once
+
+       // For the last line of the frame, end the write transaction
+    if (pDraw->y == pDraw->iHeight - 1) {
+        gifContext.oled->endWrite();  // End the display write transaction
+    }
 }
 
 void playGIF(uint8_t *gifData, size_t gifSize, bool loop = false) {
@@ -38,31 +72,32 @@ void playGIF(uint8_t *gifData, size_t gifSize, bool loop = false) {
   // return early and print an error message.
   if (!gif.open(gifData, gifSize, GIFDraw)) {
     Serial.println("Error: Failed to open GIF file."); // Print an error message
+    cleanupGIFContext(); // Ensure cleanup happens on failure
     return; // Exit the function early if the GIF fails to open
   }
 
   // Calculate the offset (position) where the GIF should be drawn on the screen
-  gifContext.offsetX = (oled.width() - canvasWidth) / 2;  // Center horizontally
-  gifContext.offsetY = (oled.height() - canvasHeight) / 2; // Center vertically
+  gifContext.offsetX = (oled.width() - gif.getCanvasWidth()) / 2;  // Center horizontally
+  gifContext.offsetY = (oled.height() - gif.getCanvasHeight()) / 2; // Center vertically
   // Calculate the size of the framebuffer required to store one frame of the GIF
-  size_t frameBufferSize = canvasWidth * (canvasHeight + 2); // Adjust as needed
+  size_t currentFrameBufferSize = gif.getCanvasWidth() * (gif.getCanvasHeight() + 2); // Adjust as needed
 
-  // Allocate memory for the frame buffer
-  gifContext.frameBuffer = (uint8_t *)heap_caps_malloc(frameBufferSize, MALLOC_CAP_8BIT);
-
-  if (!gifContext.frameBuffer) {
-    Serial.printf("Memory Error: Failed to allocate %zu bytes\n", frameBufferSize);
-    gif.close(); // Close the GIF file before returning
-    return; // Exit the function if memory allocation fails
+  // Only reallocate the frame buffer if the size has changed
+  if (gifContext.sharedFrameBuffer == nullptr || currentFrameBufferSize != frameBufferSize) {
+    gifContext.sharedFrameBuffer = (uint8_t *)heap_caps_malloc(currentFrameBufferSize, MALLOC_CAP_8BIT);
+    if (!gifContext.sharedFrameBuffer) {
+      Serial.printf("Memory Error: Failed to allocate %zu bytes\n", currentFrameBufferSize);
+      cleanupGIFContext();
+      return; // Exit the function if memory allocation fails
+    }
   }
 
   // Set the drawing type to "cooked" to allow the GIF library to pre-process frames
   gif.setDrawType(GIF_DRAW_COOKED);
-  gif.setFrameBuf(gifContext.frameBuffer);
+  gif.setFrameBuf(gifContext.sharedFrameBuffer);
 
   const int targetFPS = GIF_FPS; // Set the target FPS
   const int frameDelay = 1000000 / targetFPS; // Microseconds per frame (1 second = 1000000 microseconds)
-
   unsigned long previousTime = 0; // Track the time of the previous frame
   unsigned long currentTime = 0;
 
