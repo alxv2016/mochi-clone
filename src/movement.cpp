@@ -1,61 +1,70 @@
 #include "movement.h"
 
 Adafruit_MPU6050 mpu;
+bool isShaking = false; // State variable to track shaking
 
 void initializeMPU6050() {
-  Wire.begin(SDA_PIN, SCL_PIN);
-
-  if (!mpu.begin(0x68)) {
+  // Try to initialize!
+  if (!mpu.begin()) {
     Serial.println("Failed to find MPU6050 chip");
     while (1) {
       delay(10);
     }
   }
   Serial.println("MPU6050 Found!");
+  
 }
 
 // Function to calculate yaw, pitch, and roll
 OrientationData calculateOrientation(float accelX, float accelY, float accelZ, float gyroX, float gyroY, float gyroZ, float dt) {
-  static float pitch = 0.0;
-  static float roll = 0.0;
-  static float yaw = 0.0;
+  static float tilt = 0.0;
+  static float rotate = 0.0;
+  static float turn = 0.0;
 
   // Calculate pitch and roll from accelerometer data
   float accelPitch = atan2(accelY, sqrt(accelX * accelX + accelZ * accelZ)) * 180 / M_PI;
   float accelRoll = atan2(-accelX, accelZ) * 180 / M_PI;
 
   // Integrate gyroscope data to get angles
-  pitch += gyroX * dt;
-  roll += gyroY * dt;
-  yaw += gyroZ * dt;
+  tilt += gyroX * dt;
+  rotate += gyroY * dt;
+  turn += gyroZ * dt;
 
   // Complementary filter to combine accelerometer and gyroscope data
   const float alpha = 0.98;
-  pitch = alpha * pitch + (1 - alpha) * accelPitch;
-  roll = alpha * roll + (1 - alpha) * accelRoll;
+  tilt = alpha * tilt + (1 - alpha) * accelPitch;
+  rotate = alpha * rotate + (1 - alpha) * accelRoll;
 
-  OrientationData orientation = {yaw, pitch, roll};
+  OrientationData orientation = {turn, tilt, rotate};
   return orientation;
 }
 
-ShakeLevel detectShake(float accelX, float accelY, float accelZ, float gyroX, float gyroY, float gyroZ) {
+bool detectShake(
+  float accelX, float accelY, float accelZ, 
+  float gyroX, float gyroY, float gyroZ
+) {
+  // Calculate the magnitude of the accelerometer data
   float accelMagnitude = sqrt(sq(accelX) + sq(accelY) + sq(accelZ));
-  float dynamicAccelMagnitude = abs(accelMagnitude - 9.8);
+  float dynamicAccelMagnitude = abs(accelMagnitude - 9.8); // Subtract gravity
 
+  // Calculate the magnitude of the gyroscope data
   float gyroMagnitude = sqrt(sq(gyroX) + sq(gyroY) + sq(gyroZ));
 
   // Combine accelerometer and gyroscope data
   float combinedMagnitude = dynamicAccelMagnitude + gyroMagnitude;
 
-  if (combinedMagnitude > HARD_SHAKE_THRESHOLD) {
-    return HARD_SHAKE;
-  } else if (combinedMagnitude > MEDIUM_SHAKE_THRESHOLD) {
-    return MEDIUM_SHAKE;
-  } else if (combinedMagnitude > LIGHT_SHAKE_THRESHOLD) {
-    return LIGHT_SHAKE;
+  // Determine if shaking
+  if (combinedMagnitude > SHAKE_THRESHOLD) {
+    if (!isShaking) {
+      isShaking = true; // Transition to "shaking" state
+      return true;      // Trigger shake detection
+    }
+    // Already shaking, do nothing
+    return false;
+  } else {
+    isShaking = false; // Reset state when not shaking
+    return false;
   }
-
-  return NO_SHAKE;
 }
 
 PositionData updateElementPosition(float accelX, float accelY, float gyroX, float gyroY, float dt) {
