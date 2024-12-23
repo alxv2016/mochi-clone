@@ -21,7 +21,7 @@ GIFData gifFiles[] = {
     { (uint8_t*)LAUGH_EMOTE, sizeof(LAUGH_EMOTE) },
     { (uint8_t*)KISSY_EMOTE, sizeof(KISSY_EMOTE) },
     { (uint8_t*)JUDGE_EMOTE, sizeof(JUDGE_EMOTE) },
-    { (uint8_t*)DIZZY_EMOTE, sizeof(DIZZY_EMOTE) },
+    // { (uint8_t*)DIZZY_EMOTE, sizeof(DIZZY_EMOTE) },
     { (uint8_t*)CRY_EMOTE, sizeof(CRY_EMOTE) },
     { (uint8_t*)ANGRY_EMOTE, sizeof(ANGRY_EMOTE) },
     // Add other GIFs here (up to 15)
@@ -135,6 +135,49 @@ void playRandomGIF() {
     size_t gifSize = gifFiles[randomIndex].size;
 
     // Call playGIF to handle the actual playback of the selected GIF
+    playGIF(gifData, gifSize, false);
+
+    // Define the delay time (in milliseconds)
+    unsigned long delayTime = random(2000, 4000);  // 2-5 seconds delay, adjust as needed
+    // Store the current time to manage the delay
+    unsigned long startDelayTime = millis();
+    
+    // Play the specific GIF (e.g., loading GIF or indicator) and track its duration
+    playGIF((uint8_t*)REST_EMOTE, sizeof(REST_EMOTE), false); 
+
+    // Wait for the delay period, but ensure the specific GIF plays fully
+    while (millis() - startDelayTime < delayTime) {
+      // Optionally update your display here
+      // For example, you might want to update a progress bar or refresh the screen
+      // Example: oled.drawProgressBar(10, 10, 100, 10, (millis() - startDelayTime) / delayTime * 100);
+      // Or update an indicator showing how much time is left on the delay
+    }
+
+    // After the delay time, continue to play the next random GIF
+  }
+}
+
+void interactRandomGIF(bool shaking) {
+  while (true) { // Infinite loop to continuously play random GIFs
+    // Randomly select a GIF file
+    int randomIndex = random(0, TOTAL_GIFS); // Get a random index (0 to NUM_GIFS-1)
+
+    uint8_t* gifData;
+    size_t gifSize;
+
+    // Check if position is over a certain point and play a specific GIF
+    if (shaking) {
+      // Play a specific GIF (not in the array)
+      gifData = (uint8_t*)DIZZY_EMOTE; // Replace MY_SPECIFIC_GIF with the actual GIF data
+      gifSize = sizeof(DIZZY_EMOTE);   // Replace with the actual size of the GIF
+    } else {
+      // Otherwise, play a random GIF from the array
+      int randomIndex = random(0, TOTAL_GIFS);
+      gifData = gifFiles[randomIndex].data;
+      gifSize = gifFiles[randomIndex].size;
+    }
+
+    // Play the selected GIF
     playGIF(gifData, gifSize, false);
 
     // Define the delay time (in milliseconds)

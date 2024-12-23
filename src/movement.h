@@ -29,7 +29,7 @@ struct OrientationData {
 
 // Movement scaling
 #define MOVEMENT_SCALING 5
-#define SHAKE_THRESHOLD 10
+#define SHAKE_THRESHOLD 15
 
 // Function prototypes
 OrientationData calculateOrientation(float accelX, float accelY, float accelZ,

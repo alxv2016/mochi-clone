@@ -7,11 +7,13 @@ void logMPUData() {
   sensors_event_t accel, gyro, temp;
   mpu.getEvent(&accel, &gyro, &temp);
 
-  if (detectShake(accel.acceleration.x, accel.acceleration.y, accel.acceleration.z, gyro.gyro.x, gyro.gyro.y, gyro.gyro.z)) {
-    Serial.println("Shake detected!");
-  } else {
-    Serial.println("No shake detected. Already shaking");
-  }
+  bool shaking = detectShake(accel.acceleration.x, accel.acceleration.y, accel.acceleration.z, gyro.gyro.x, gyro.gyro.y, gyro.gyro.z);
+
+  // if (detectShake(accel.acceleration.x, accel.acceleration.y, accel.acceleration.z, gyro.gyro.x, gyro.gyro.y, gyro.gyro.z)) {
+  //   Serial.println("Shake detected!");
+  // } else {
+  //   Serial.println("No shake detected.");
+  // }
 
   OrientationData orientation = calculateOrientation(accel.acceleration.x, accel.acceleration.y, accel.acceleration.z, gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, 0.01);
 
@@ -21,6 +23,8 @@ void logMPUData() {
   Serial.print(orientation.tilt);
   Serial.print("°, Rotate: ");
   Serial.println(orientation.rotate);
+
+  // interactRandomGIF(shaking);
 }
 
 void setup() {
@@ -37,6 +41,5 @@ void setup() {
 void loop() {
   Serial.println("MPU6050 Data:");
   logMPUData();
-  playRandomGIF();
   delay(100);
 }

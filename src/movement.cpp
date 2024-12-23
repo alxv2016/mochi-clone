@@ -40,31 +40,60 @@ OrientationData calculateOrientation(float accelX, float accelY, float accelZ, f
 }
 
 bool detectShake(
-  float accelX, float accelY, float accelZ, 
-  float gyroX, float gyroY, float gyroZ
+  float accelX, float accelY, float accelZ,   // Accelerometer data for X, Y, Z axes
+  float gyroX, float gyroY, float gyroZ      // Gyroscope data for X, Y, Z axes
 ) {
-  // Calculate the magnitude of the accelerometer data
-  float accelMagnitude = sqrt(sq(accelX) + sq(accelY) + sq(accelZ));
-  float dynamicAccelMagnitude = abs(accelMagnitude - 9.8); // Subtract gravity
+  // Static variables retain their values between function calls.
+  static unsigned long lastShakeTime = 0;    // Stores the time (in milliseconds) when shaking was last detected.
+  static bool isShaking = false;             // Keeps track of whether the device is currently shaking.
 
-  // Calculate the magnitude of the gyroscope data
+  // Constants make it easier to adjust values without digging into the code.
+  const unsigned long RESET_TIMEOUT = 1000; // Time (in ms) to wait before resetting the "shaking" state.
+  const float GRAVITY = 9.8;                 // Approximate acceleration due to gravity (m/s²).
+
+  // Calculate the magnitude of acceleration by combining all three axes using the Pythagorean theorem.
+  float accelMagnitude = sqrt(sq(accelX) + sq(accelY) + sq(accelZ));
+
+  // Remove the constant effect of gravity to focus on dynamic movement.
+  float dynamicAccelMagnitude = abs(accelMagnitude - GRAVITY);
+
+  // Calculate the magnitude of the gyroscope data (rotational movement).
   float gyroMagnitude = sqrt(sq(gyroX) + sq(gyroY) + sq(gyroZ));
 
-  // Combine accelerometer and gyroscope data
+  // Combine accelerometer and gyroscope data to get an overall movement value.
   float combinedMagnitude = dynamicAccelMagnitude + gyroMagnitude;
 
-  // Determine if shaking
+  // Log the calculated combined magnitude to the serial monitor for debugging.
+  Serial.print("Shake Value (Combined Magnitude): ");
+  Serial.println(combinedMagnitude);
+
+  // Check if the combined magnitude exceeds the defined shake threshold.
   if (combinedMagnitude > SHAKE_THRESHOLD) {
-    if (!isShaking) {
-      isShaking = true; // Transition to "shaking" state
-      return true;      // Trigger shake detection
+    if (!isShaking) {                // If not already shaking:
+      isShaking = true;              // Update the state to indicate shaking.
+      lastShakeTime = millis();      // Record the current time for reset logic.
+      
+      // Log to the serial monitor that shaking has started.
+      Serial.println("Shaking detected!");
+
+      return true;                   // Return `true` to indicate shaking was detected.
     }
-    // Already shaking, do nothing
-    return false;
-  } else {
-    isShaking = false; // Reset state when not shaking
-    return false;
+
+    // If already shaking, simply update the last shake time and return `false`.
+    lastShakeTime = millis();        // Keeps the reset timeout from triggering.
+    return false;                    // Return `false` because this is not a new shake event.
   }
+
+  // If the combined magnitude is below the shake threshold:
+  if (isShaking && millis() - lastShakeTime > RESET_TIMEOUT) {
+    // If enough time has passed since the last shake:
+    isShaking = false;               // Reset the "shaking" state to `false`.
+
+    // Log to the serial monitor that shaking has stopped.
+    Serial.println("Shaking stopped.");
+  }
+
+  return false;                      // Return `false` because no shaking was detected.
 }
 
 PositionData updateElementPosition(float accelX, float accelY, float gyroX, float gyroY, float dt) {
