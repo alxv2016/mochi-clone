@@ -2,8 +2,12 @@
 
 Adafruit_MPU6050 mpu;
 sensors_event_t accel, gyro, temp;
-bool isShaking = false; // State variable to track shaking
+bool isShaking = false;
+bool isOrienting = false;
 bool mpuInitialized = false; 
+
+unsigned long lastCaptureTime = 0; // Variable to store the last capture time
+const unsigned long captureInterval = 100; // Interval in milliseconds
 
 void initializeMPU6050() {
   // Try to initialize!
@@ -24,7 +28,11 @@ void captureMPUData() {
     Serial.println("Error: MPU not initialized.");
     return;
   }
-  mpu.getEvent(&accel, &gyro, &temp);
+  unsigned long currentTime = millis();
+  if (currentTime - lastCaptureTime >= captureInterval) {
+    mpu.getEvent(&accel, &gyro, &temp);
+    lastCaptureTime = currentTime; // Update the last capture time
+  }
 }
 
 static bool handleShakeDetected(int lastShakeTime) {
@@ -101,34 +109,42 @@ OrientationData calculateOrientation(float accelX, float accelY, float accelZ,
   tilt += gyroX * dt;
   rotate += gyroY * dt;
   turn += gyroZ * dt;
+  // Convert turn from radians to degrees
+  float turnDegrees = turn * 180 / M_PI;
 
   // Complementary filter to combine accelerometer and gyroscope data
   const float alpha = 0.98;
   tilt = alpha * tilt + (1 - alpha) * accelPitch;
   rotate = alpha * rotate + (1 - alpha) * accelRoll;
 
-  OrientationData orientation = {turn, tilt, rotate};
+  OrientationData orientation = {round(turnDegrees), round(tilt), round(rotate)};
   return orientation;
 }
 
-PositionData updateElementPosition(float accelX, float accelY, float gyroX,
-                                   float gyroY, float dt) {
-  // Static variables to retain their values between function calls
-  static int elementX = DISPLAY_WIDTH / 2;  // Initial X position (centered)
-  static int elementY = DISPLAY_HEIGHT / 2; // Initial Y position (centered)
-  // Scale the movement
-  int deltaX = (accelX + gyroX * dt) * MOVEMENT_SCALING;
-  int deltaY = (accelY + gyroY * dt) * MOVEMENT_SCALING;
+bool detectTurn(const OrientationData& orientation) {
+  // Threshold for detecting a turn
+  const float TURN_THRESHOLD = 24.00;
+  // Check if the device is turning
+  // Serial.print("Orientation - turn: ");
+  // Serial.print(orientation.turn);
+  // Serial.print("°, tilt: ");
+  // Serial.print(orientation.tilt);
+  // Serial.print("°, Rotate: ");
+  // Serial.println(orientation.rotate);
+  const unsigned long RESET_TIMEOUT = 2000;
+  unsigned long lastTime = 0;
 
-  // Update the logical position
-  elementX += deltaX;
-  elementY += deltaY;
-
-  // Clamp the position
-  elementX = constrain(elementX, -DISPLAY_WIDTH + 10, DISPLAY_WIDTH - 10);
-  elementY = constrain(elementY, -DISPLAY_HEIGHT + 10, DISPLAY_HEIGHT - 10);
-
-  // Return a struct with the updated data
-  PositionData position = {elementX, elementY, deltaX, deltaY};
-  return position;
+  if (orientation.turn >= TURN_THRESHOLD) {
+    if (!isOrienting) {
+    isOrienting = true;
+    lastTime = millis();
+    Serial.println("Turn detected!");
+    Serial.print("Orientation - turn: ");
+    Serial.print(orientation.turn);
+    return true;
+  }
+  lastTime = millis();
+  return false;
+  }
+  return true;
 }

@@ -6,15 +6,14 @@
 AnimatedGIF gif;
 GIFContext gifContext = {&oled, nullptr, 0, 0}; // Context for GIF drawing
 // Assume maximum canvas size for all GIFs
-const size_t maxCanvasWidth = GIF_WIDTH;   // Max width of GIFs
-const size_t maxCanvasHeight = GIF_HEIGHT; // Max height of GIFs
-const size_t frameBufferSize = maxCanvasWidth * maxCanvasHeight * 2; // 2 bytes per pixel (RGB565)
+constexpr size_t maxCanvasWidth = GIF_WIDTH;   // Max width of GIFs
+constexpr size_t maxCanvasHeight = GIF_HEIGHT; // Max height of GIFs
+constexpr size_t frameBufferSize = maxCanvasWidth * maxCanvasHeight * 2; // 2 bytes per pixel (RGB565)
 bool isDizzy = false;
 bool isResting = true;
 
 GIFData gifFiles[] = {
     {(uint8_t *)UWU_EMOTE, sizeof(UWU_EMOTE)},
-    {(uint8_t *)SLEEPY_EMOTE, sizeof(SLEEPY_EMOTE)},
     {(uint8_t *)SIGH_EMOTE, sizeof(SIGH_EMOTE)},
     {(uint8_t *)SHOCK_EMOTE, sizeof(SHOCK_EMOTE)},
     {(uint8_t *)PERVE_EMOTE, sizeof(PERVE_EMOTE)},
@@ -30,7 +29,8 @@ GIFData gifFiles[] = {
 GIFData restingGifFiles[] = {
     {(uint8_t *)LOOK_LEFT_RIGHT_EMOTE, sizeof(LOOK_LEFT_RIGHT_EMOTE)},
     {(uint8_t *)LOOK_UP_DOWN_EMOTE, sizeof(LOOK_UP_DOWN_EMOTE)},
-    {(uint8_t *)REST_EMOTE, sizeof(REST_EMOTE)}
+    {(uint8_t *)REST_EMOTE, sizeof(REST_EMOTE)},
+    {(uint8_t *)SLEEPY_EMOTE, sizeof(SLEEPY_EMOTE)},
 };
 
 
@@ -102,27 +102,24 @@ void playGIF(uint8_t *gifData, size_t gifSize, bool loop = false) {
       gif.getCanvasWidth() * (gif.getCanvasHeight() + 2); // Adjust as needed
 
   // Only reallocate the frame buffer if the size has changed
-  if (gifContext.sharedFrameBuffer == nullptr ||
-      currentFrameBufferSize != frameBufferSize) {
-    gifContext.sharedFrameBuffer =
-        (uint8_t *)heap_caps_malloc(currentFrameBufferSize, MALLOC_CAP_8BIT);
+  if (gifContext.sharedFrameBuffer == nullptr || currentFrameBufferSize != frameBufferSize) {
+    if (gifContext.sharedFrameBuffer) {
+      heap_caps_free(gifContext.sharedFrameBuffer);
+    }
+    gifContext.sharedFrameBuffer = (uint8_t *)heap_caps_malloc(currentFrameBufferSize, MALLOC_CAP_8BIT);
     if (!gifContext.sharedFrameBuffer) {
-      Serial.printf("Memory Error: Failed to allocate %zu bytes\n",
-                    currentFrameBufferSize);
+      Serial.printf("Memory Error: Failed to allocate %zu bytes\n", currentFrameBufferSize);
       cleanupGIFContext();
       return; // Exit the function if memory allocation fails
     }
   }
 
-  // Set the drawing type to "cooked" to allow the GIF library to pre-process
-  // frames
+  // Set the drawing type to "cooked" to allow the GIF library to pre-process frames
   gif.setDrawType(GIF_DRAW_COOKED);
   gif.setFrameBuf(gifContext.sharedFrameBuffer);
 
   const int targetFPS = GIF_FPS; // Set the target FPS
-  const int frameDelay =
-      1000000 /
-      targetFPS; // Microseconds per frame (1 second = 1000000 microseconds)
+  const int frameDelay = 1000000 / targetFPS; // Microseconds per frame (1 second = 1000000 microseconds)
   unsigned long previousTime = 0; // Track the time of the previous frame
   unsigned long currentTime = 0;
 
@@ -144,8 +141,7 @@ void playGIF(uint8_t *gifData, size_t gifSize, bool loop = false) {
       } else {
         // Wait for the remaining time to meet the target FPS
         delayMicroseconds(frameDelay - (currentTime - previousTime));
-        previousTime =
-            micros(); // Update previousTime to the new time after delay
+        previousTime = micros(); // Update previousTime to the new time after delay
       }
     }
 
@@ -163,25 +159,23 @@ void interactRandomGIF() {
   // Randomly select a GIF file
   if (isShaking) {
     isDizzy = true;
-    Serial.println("Shaking detected. Playing DIZZY_EMOTE.");
-    Serial.println("Stopping current GIF for DIZZY_EMOTE.");
+    Serial.println("Shaking detected. Playing DIZZY_EMOTE and stopping current GIF.");
     playGIF((uint8_t *)DIZZY_EMOTE, sizeof(DIZZY_EMOTE), false);
     return;
   }
 
-  int randomIndex = random(0, TOTAL_GIFS); // Get a random index (0 to NUM_GIFS-1)
-  int randomRestIndex = random(0, TOTAL_RESTING_GIFS);
-  
   uint8_t *gifData;
   size_t gifSize;
 
   if (isResting) {
-    Serial.println("No shaking detected. Playing random GIF.");
+    int randomRestIndex = random(0, TOTAL_RESTING_GIFS);
+    Serial.println("No shaking detected. Playing random resting GIF.");
     gifData = restingGifFiles[randomRestIndex].data;
     gifSize = restingGifFiles[randomRestIndex].size;
     isResting = false;
   } else {
-    Serial.println("Shaking stopped play random GIF.");
+    int randomIndex = random(0, TOTAL_GIFS);
+    Serial.println("Shaking stopped. Playing random GIF.");
     gifData = gifFiles[randomIndex].data;
     gifSize = gifFiles[randomIndex].size;
     isResting = true;
