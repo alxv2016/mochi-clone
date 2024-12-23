@@ -52,6 +52,6 @@ void playGIF(uint8_t* gifData, size_t gifSize, bool loop);
 void playRandomGIF(void);
 void initializeGIF(void) ;
 void printMemoryStats(void);
-void interactRandomGIF(bool shaking);
+void interactRandomGIF(void);
 
 #endif

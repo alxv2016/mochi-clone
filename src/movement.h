@@ -6,6 +6,8 @@
 #include <Wire.h>
 
 extern Adafruit_MPU6050 mpu;
+extern sensors_event_t accel, gyro, temp;
+extern bool isShaking; // State variable to track shaking
 // Struct to hold position and movement values
 struct PositionData {
   int logicalX;
@@ -22,14 +24,9 @@ struct OrientationData {
 
 #define DISPLAY_WIDTH 128
 #define DISPLAY_HEIGHT 128
-// Thresholds for shake intensity
-#define LIGHT_SHAKE_THRESHOLD 2.0
-#define MEDIUM_SHAKE_THRESHOLD 5.0
-#define HARD_SHAKE_THRESHOLD 8.0
-
 // Movement scaling
 #define MOVEMENT_SCALING 5
-#define SHAKE_THRESHOLD 15
+#define SHAKE_THRESHOLD 4
 
 // Function prototypes
 OrientationData calculateOrientation(float accelX, float accelY, float accelZ,
@@ -40,5 +37,6 @@ bool detectShake(float accelX, float accelY, float accelZ, float gyroX,
 PositionData updateElementPosition(float accelX, float accelY, float gyroX,
                                    float gyroY, float dt);
 void initializeMPU6050(void);
+void captureMPUData(void);
 
 #endif

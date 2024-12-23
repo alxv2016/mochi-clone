@@ -1,5 +1,6 @@
 #include "animate.h"
 #include "display.h"
+#include "movement.h"
 
 // Global variables and constants
 AnimatedGIF gif;
@@ -8,6 +9,7 @@ GIFContext gifContext = {&oled, nullptr, 0, 0}; // Context for GIF drawing
 const size_t maxCanvasWidth = GIF_WIDTH; // Max width of GIFs
 const size_t maxCanvasHeight = GIF_HEIGHT; // Max height of GIFs
 const size_t frameBufferSize = maxCanvasWidth * maxCanvasHeight * 2;  // 2 bytes per pixel (RGB565)
+bool isDizzy = false; 
 
 GIFData gifFiles[] = {
     { (uint8_t*)LOOK_LEFT_RIGHT_EMOTE, sizeof(LOOK_LEFT_RIGHT_EMOTE) },
@@ -105,7 +107,13 @@ void playGIF(uint8_t *gifData, size_t gifSize, bool loop = false) {
   do {
     while (gif.playFrame(false, nullptr)) {
       currentTime = micros(); // Get the current time in microseconds
-
+      captureMPUData();
+      detectShake(accel.acceleration.x, accel.acceleration.y, accel.acceleration.z, gyro.gyro.x, gyro.gyro.y, gyro.gyro.z);
+        if (isShaking && !isDizzy) {
+          Serial.println("Interrupt detected. Switching to DIZZY_EMOTE.");
+          gif.reset();
+        return; // Exit to play the new GIF
+        }
       // Wait for the next frame based on the desired FPS
       if (currentTime - previousTime >= frameDelay) {
         previousTime = currentTime; // Update the previous time
@@ -123,6 +131,7 @@ void playGIF(uint8_t *gifData, size_t gifSize, bool loop = false) {
 
   // Cleanup after the GIF finishes playing
   cleanupGIFContext();
+  isDizzy = false; 
 }
 
 // Function to play a GIF// Function to play a random GIF
@@ -156,46 +165,42 @@ void playRandomGIF() {
     // After the delay time, continue to play the next random GIF
   }
 }
-
-void interactRandomGIF(bool shaking) {
-  while (true) { // Infinite loop to continuously play random GIFs
+ // Flag to track if a GIF is currently playing
+void interactRandomGIF() {
     // Randomly select a GIF file
     int randomIndex = random(0, TOTAL_GIFS); // Get a random index (0 to NUM_GIFS-1)
-
     uint8_t* gifData;
     size_t gifSize;
 
-    // Check if position is over a certain point and play a specific GIF
-    if (shaking) {
-      // Play a specific GIF (not in the array)
-      gifData = (uint8_t*)DIZZY_EMOTE; // Replace MY_SPECIFIC_GIF with the actual GIF data
-      gifSize = sizeof(DIZZY_EMOTE);   // Replace with the actual size of the GIF
+    if (isShaking) {
+      isDizzy = true;
+      Serial.println("Shaking detected. Playing DIZZY_EMOTE.");
+      // oled.fillScreen(TFT_BLACK);
+      Serial.println("Stopping current GIF for DIZZY_EMOTE.");
+      gifData = (uint8_t*)DIZZY_EMOTE;
+      gifSize = sizeof(DIZZY_EMOTE);
     } else {
-      // Otherwise, play a random GIF from the array
-      int randomIndex = random(0, TOTAL_GIFS);
+      Serial.println("Shaking stopped play random GIF.");
       gifData = gifFiles[randomIndex].data;
       gifSize = gifFiles[randomIndex].size;
     }
 
-    // Play the selected GIF
+    // Call playGIF to handle the actual playback of the selected GIF
     playGIF(gifData, gifSize, false);
-
-    // Define the delay time (in milliseconds)
-    unsigned long delayTime = random(2000, 4000);  // 2-5 seconds delay, adjust as needed
-    // Store the current time to manage the delay
-    unsigned long startDelayTime = millis();
+    // // Define the delay time (in milliseconds)
+    // unsigned long delayTime = random(1000, 2000);  // 2-5 seconds delay, adjust as needed
+    // // Store the current time to manage the delay
+    // unsigned long startDelayTime = millis();
     
     // Play the specific GIF (e.g., loading GIF or indicator) and track its duration
     playGIF((uint8_t*)REST_EMOTE, sizeof(REST_EMOTE), false); 
 
-    // Wait for the delay period, but ensure the specific GIF plays fully
-    while (millis() - startDelayTime < delayTime) {
-      // Optionally update your display here
-      // For example, you might want to update a progress bar or refresh the screen
-      // Example: oled.drawProgressBar(10, 10, 100, 10, (millis() - startDelayTime) / delayTime * 100);
-      // Or update an indicator showing how much time is left on the delay
-    }
+    // // Wait for the delay period, but ensure the specific GIF plays fully
+    // while (millis() - startDelayTime < delayTime) {
+    //   // Optionally update your display here
+    //   // For example, you might want to update a progress bar or refresh the screen
+    //   // Example: oled.drawProgressBar(10, 10, 100, 10, (millis() - startDelayTime) / delayTime * 100);
+    //   // Or update an indicator showing how much time is left on the delay
+    // }
 
-    // After the delay time, continue to play the next random GIF
-  }
 }

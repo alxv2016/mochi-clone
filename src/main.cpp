@@ -1,21 +1,12 @@
-#include <Arduino.h>
+#include "animate.h"
 #include "display.h"
 #include "movement.h"
-#include "animate.h"
+#include <Arduino.h>
 
 void logMPUData() {
-  sensors_event_t accel, gyro, temp;
-  mpu.getEvent(&accel, &gyro, &temp);
-
-  bool shaking = detectShake(accel.acceleration.x, accel.acceleration.y, accel.acceleration.z, gyro.gyro.x, gyro.gyro.y, gyro.gyro.z);
-
-  // if (detectShake(accel.acceleration.x, accel.acceleration.y, accel.acceleration.z, gyro.gyro.x, gyro.gyro.y, gyro.gyro.z)) {
-  //   Serial.println("Shake detected!");
-  // } else {
-  //   Serial.println("No shake detected.");
-  // }
-
-  OrientationData orientation = calculateOrientation(accel.acceleration.x, accel.acceleration.y, accel.acceleration.z, gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, 0.01);
+  OrientationData orientation = calculateOrientation(
+      accel.acceleration.x, accel.acceleration.y, accel.acceleration.z,
+      gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, 0.01);
 
   Serial.print("Orientation - turn: ");
   Serial.print(orientation.turn);
@@ -23,8 +14,6 @@ void logMPUData() {
   Serial.print(orientation.tilt);
   Serial.print("°, Rotate: ");
   Serial.println(orientation.rotate);
-
-  // interactRandomGIF(shaking);
 }
 
 void setup() {
@@ -32,14 +21,14 @@ void setup() {
   Serial.println("Initializing MPU6050");
   initializeOLED();
   initializeMPU6050();
-  initializeGIF();
+  // initializeGIF();
   displayBootMessage("ALXV");
   delay(3000);
 }
 
-// the loop function runs over and over again forever
 void loop() {
-  Serial.println("MPU6050 Data:");
-  logMPUData();
-  delay(100);
+  // Handle GIF interaction based on shaking
+  interactRandomGIF();
+  // Allow other tasks to run
+  delay(1000); // Optional small delay to avoid excessive CPU usage
 }
