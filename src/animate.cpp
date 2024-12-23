@@ -5,6 +5,7 @@
 // Global variables and constants
 AnimatedGIF gif;
 GIFContext gifContext = {&oled, nullptr, 0, 0}; // Context for GIF drawing
+ShakeOrientationData mpuData;
 // Assume maximum canvas size for all GIFs
 constexpr size_t maxCanvasWidth = GIF_WIDTH;   // Max width of GIFs
 constexpr size_t maxCanvasHeight = GIF_HEIGHT; // Max height of GIFs
@@ -128,9 +129,10 @@ void playGIF(uint8_t *gifData, size_t gifSize, bool loop = false) {
     while (gif.playFrame(false, nullptr)) {
       currentTime = micros(); // Get the current time in microseconds
       captureMPUData();
-      detectShake(accel.acceleration.x, accel.acceleration.y,
-                  accel.acceleration.z, gyro.gyro.x, gyro.gyro.y, gyro.gyro.z);
-      if (isShaking && !isDizzy) {
+      mpuData = detectShakeAndOrientation(accel.acceleration.x, accel.acceleration.y,
+                  accel.acceleration.z, gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, 0.01, SHAKE_THRESHOLD, TURN_THRESHOLD);
+
+      if (mpuData.isShaking && !isDizzy) {
         Serial.println("Interrupt detected. Switching to DIZZY_EMOTE.");
         cleanupGIFContext();
         return; // Exit to play the new GIF
@@ -157,7 +159,7 @@ void playGIF(uint8_t *gifData, size_t gifSize, bool loop = false) {
 // Flag to track if a GIF is currently playing
 void interactRandomGIF() {
   // Randomly select a GIF file
-  if (isShaking) {
+  if (mpuData.isShaking) {
     isDizzy = true;
     Serial.println("Shaking detected. Playing DIZZY_EMOTE and stopping current GIF.");
     playGIF((uint8_t *)DIZZY_EMOTE, sizeof(DIZZY_EMOTE), false);
