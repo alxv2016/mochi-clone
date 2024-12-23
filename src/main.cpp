@@ -1,5 +1,7 @@
 #include <Arduino.h>
+#include "display.h"
 #include "movement.h"
+#include "animate.h"
 
 void logMPUData() {
   sensors_event_t accel, gyro, temp;
@@ -24,12 +26,17 @@ void logMPUData() {
 void setup() {
   Serial.begin(115200);
   Serial.println("Initializing MPU6050");
+  initializeOLED();
   initializeMPU6050();
+  initializeGIF();
+  displayBootMessage("ALXV");
+  delay(3000);
 }
 
 // the loop function runs over and over again forever
 void loop() {
   Serial.println("MPU6050 Data:");
   logMPUData();
+  playRandomGIF();
   delay(100);
 }

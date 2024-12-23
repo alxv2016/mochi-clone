@@ -29,11 +29,11 @@ extern Adafruit_SSD1351 oled;
 // CS | CS // Chip select, Set to -1 if for manually use with multiple displays
 
 // Pin configuration
-#define SCLK_PIN 8 // Clock
-#define MOSI_PIN 10  // Data
-#define DC_PIN   7  // Data/Command
-#define CS_PIN   9 // Chip Select
-#define RST_PIN  6  // Reset
+#define MOSI_PIN 9
+#define SCLK_PIN 7
+#define CS_PIN 2
+#define DC_PIN 4
+#define RST_PIN 1
 
 // SPI fequency
 #define SPI_FREQUENCY 20000000
