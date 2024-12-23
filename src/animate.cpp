@@ -11,6 +11,7 @@ constexpr size_t maxCanvasWidth = GIF_WIDTH;   // Max width of GIFs
 constexpr size_t maxCanvasHeight = GIF_HEIGHT; // Max height of GIFs
 constexpr size_t frameBufferSize = maxCanvasWidth * maxCanvasHeight * 2; // 2 bytes per pixel (RGB565)
 bool isDizzy = false;
+bool isLooking = false;
 bool isResting = true;
 
 GIFData gifFiles[] = {
@@ -128,6 +129,7 @@ void playGIF(uint8_t *gifData, size_t gifSize, bool loop = false) {
   do {
     while (gif.playFrame(false, nullptr)) {
       currentTime = micros(); // Get the current time in microseconds
+      // Capture MPU6050 data and detect shake and orientation
       captureMPUData();
       mpuData = detectShakeAndOrientation(accel.acceleration.x, accel.acceleration.y,
                   accel.acceleration.z, gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, 0.01, SHAKE_THRESHOLD, TURN_THRESHOLD);
@@ -137,6 +139,13 @@ void playGIF(uint8_t *gifData, size_t gifSize, bool loop = false) {
         cleanupGIFContext();
         return; // Exit to play the new GIF
       }
+
+      if (mpuData.isTurning && !isLooking) {
+        Serial.println("Interrupt detected. Switching to LOOK.");
+        cleanupGIFContext();
+        return; // Exit to play the new GIF
+      }
+
       // Wait for the next frame based on the desired FPS
       if (currentTime - previousTime >= frameDelay) {
         previousTime = currentTime; // Update the previous time
@@ -153,6 +162,7 @@ void playGIF(uint8_t *gifData, size_t gifSize, bool loop = false) {
   } while (loop);
 
   isDizzy = false;
+  isLooking = false;
   // Cleanup after the GIF finishes playing
   cleanupGIFContext();
 }
@@ -163,6 +173,13 @@ void interactRandomGIF() {
     isDizzy = true;
     Serial.println("Shaking detected. Playing DIZZY_EMOTE and stopping current GIF.");
     playGIF((uint8_t *)DIZZY_EMOTE, sizeof(DIZZY_EMOTE), false);
+    return;
+  }
+
+  if (mpuData.isTurning) {
+    isLooking = true;
+    Serial.println("Turning detected. Playing LOOK GIF.");
+    playGIF((uint8_t *)LOOK_LEFT_RIGHT_EMOTE, sizeof(LOOK_LEFT_RIGHT_EMOTE), false);
     return;
   }
 

@@ -133,8 +133,7 @@ ShakeOrientationData detectShakeAndOrientation(float accelX, float accelY,
       calculateOrientation(accelX, accelY, accelZ, gyroX, gyroY, gyroZ, dt);
 
   // Detect turn state
-  detectState(orientation.turn, turnThreshold, isTurning, lastTurnTime, "Turn",
-              "Turn stopped.");
+  detectState(abs(orientation.turn), turnThreshold, isTurning, lastTurnTime, "Turn", "Turn stopped.");
   detectNoState(isTurning, lastTurnTime, RESET_TIMEOUT, "Turn stopped.");
 
   return {isShaking, orientation, isTurning};
