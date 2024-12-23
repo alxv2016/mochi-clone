@@ -21,6 +21,7 @@ struct GIFData {
 };
 // Declare the array (no definition here, just a declaration)
 extern GIFData gifFiles[];
+extern GIFData restingGifFiles[];
 
 // GIF SETTINGS
 #define GIF_FPS 15
@@ -28,6 +29,7 @@ extern GIFData gifFiles[];
 #define GIF_WIDTH 128
 // Define the macro to count the number of GIFs in the array
 #define TOTAL_GIFS (sizeof(gifFiles) / sizeof(gifFiles[0]))
+#define TOTAL_RESTING_GIFS (sizeof(restingGifFiles) / sizeof(restingGifFiles[0]))
 #define REST_EMOTE rest
 // Array of GIFs
 #define LOOK_LEFT_RIGHT_EMOTE look_left_right
@@ -49,7 +51,6 @@ extern GIFData gifFiles[];
 void cleanupGIFContext(void);
 void GIFDraw(GIFDRAW *pDraw);
 void playGIF(uint8_t* gifData, size_t gifSize, bool loop);
-void playRandomGIF(void);
 void initializeGIF(void) ;
 void printMemoryStats(void);
 void interactRandomGIF(void);
