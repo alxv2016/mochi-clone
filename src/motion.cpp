@@ -31,7 +31,8 @@ void initializeMPU6050() {
 }
 
 // Function to get gyroscope readings
-void getGyro(float &calGyroX, float &calGyroY, float &calGyroZ, float gyroX, float gyroY, float gyroZ) {
+void getGyro(float &calGyroX, float &calGyroY, float &calGyroZ, float gyroX,
+             float gyroY, float gyroZ) {
   // Get gyroscope readings and apply offsets
   calGyroX = gyroX * 57.2958 - offset_gx; // Convert radians/sec to degrees/sec
   calGyroY = gyroY * 57.2958 - offset_gy;
@@ -49,7 +50,8 @@ void gyroCalibration(int calibration_time) {
     mpu.getEvent(&accel, &gyro, &temp);
 
     // Accumulate raw gyroscope readings
-    sum_gx += gyro.gyro.x * 57.2958; // Convert radians/sec to degrees/sec
+    // Convert radians/sec to degrees/sec
+    sum_gx += gyro.gyro.x * 57.2958;
     sum_gy += gyro.gyro.y * 57.2958;
     sum_gz += gyro.gyro.z * 57.2958;
 
@@ -58,7 +60,7 @@ void gyroCalibration(int calibration_time) {
       Serial.printf("Still calibrating... %d samples collected\n", num_samples);
     }
 
-    delay(10); // Adjust based on MPU6050 read rate
+    delay(10);
   }
 
   // Calculate and store offsets
@@ -66,7 +68,8 @@ void gyroCalibration(int calibration_time) {
   offset_gy = sum_gy / num_samples;
   offset_gz = sum_gz / num_samples;
 
-  Serial.printf("Gyroscope calibration complete!\nOffsets: X = %.2f, Y = %.2f, Z = %.2f\n",
+  Serial.printf("Gyroscope calibration complete!\nOffsets: X = %.2f, Y = %.2f, "
+                "Z = %.2f\n",
                 offset_gx, offset_gy, offset_gz);
 }
 
@@ -92,8 +95,7 @@ int calculateCombinedMagnitude(float accelX, float accelY, float accelZ,
 }
 
 OrientationData calculateOrientation(float accelX, float accelY, float accelZ,
-                                     float gyroX, float gyroY, float gyroZ,
-                                     float dt) {
+                                     float gyroX, float gyroY, float gyroZ) {
   // Calculate pitch and roll from accelerometer data
   float pitch =
       atan2(accelY, sqrt(accelX * accelX + accelZ * accelZ)) * 180.0 / M_PI;
@@ -166,13 +168,9 @@ bool detectNoState(bool &currentState, unsigned long lastStateTime,
 }
 
 // Main function to detect both shake and orientation states
-ShakeOrientationData detectShakeAndOrientation(float accelX, float accelY,
-                                               float accelZ, float gyroX,
-                                               float gyroY, float gyroZ,
-                                               float dt, int shakeThreshold,
-                                               float turnThreshold,
-                                               float tiltThreshold) {
-
+MotionStates detectMotionStates(float accelX, float accelY, float accelZ,
+                               float gyroX, float gyroY, float gyroZ,
+                               int shakeThreshold, float tiltThreshold) {
   static bool isShaking = false;
   static bool isTilting = false;
   static unsigned long lastShakeTime = 0;
@@ -195,7 +193,7 @@ ShakeOrientationData detectShakeAndOrientation(float accelX, float accelY,
 
   // Calculate orientation
   OrientationData orientation =
-      calculateOrientation(accelX, accelY, accelZ, gyroX, gyroY, gyroZ, dt);
+      calculateOrientation(accelX, accelY, accelZ, gyroX, gyroY, gyroZ);
 
   // Detect tilt state with debounce
   if (currentTime - lastTiltTime >= debounceDelay) {

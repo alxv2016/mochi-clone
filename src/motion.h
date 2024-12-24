@@ -4,6 +4,7 @@
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
+#include "display.h"
 
 extern Adafruit_MPU6050 mpu;
 extern sensors_event_t accel, gyro, temp;
@@ -15,18 +16,13 @@ struct OrientationData {
 };
 
 // Data structure to hold shake and orientation states
-struct ShakeOrientationData {
+struct MotionStates {
     bool isShaking;
     bool isTilting;
     OrientationData orientation;
 };
 
-#define DISPLAY_WIDTH 128
-#define DISPLAY_HEIGHT 128
-// Movement scaling
-#define MOVEMENT_SCALING 5
 #define SHAKE_THRESHOLD 15
-#define TURN_THRESHOLD 25.00
 #define TILT_THRESHOLD 25.00
 
 // Function prototypes
@@ -35,9 +31,9 @@ void captureMPUData(void);
 void gyroCalibration(int calibration_time);
 void getGyro(float &calGyroX, float &calGyroY, float &calGyroZ, float gyroX, float gyroY, float gyroZ);
 
-ShakeOrientationData detectShakeAndOrientation(float accelX, float accelY, float accelZ,
+MotionStates detectMotionStates(float accelX, float accelY, float accelZ,
                                                float gyroX, float gyroY, float gyroZ,
-                                               float dt, int shakeThreshold, float turnThreshold, float tiltThreshold);
+                                               int shakeThreshold, float tiltThreshold);
 
 
 #endif

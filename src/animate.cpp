@@ -5,7 +5,7 @@
 // Global variables and constants
 AnimatedGIF gif;
 GIFContext gifContext = {&oled, nullptr, 0, 0};
-ShakeOrientationData mpuData;
+MotionStates mpuData;
 // Define maximum canvas size (128x128) for all GIFs 2 bytes per pixel (RGB565)
 constexpr size_t frameBufferSize = GIF_WIDTH * GIF_HEIGHT * 2;
 // Current state for the emotes
@@ -74,10 +74,9 @@ static void GIFDraw(GIFDRAW *pDraw) {
 
 static bool handleEmoteStates() {
   captureMPUData();
-  mpuData = detectShakeAndOrientation(
+  mpuData = detectMotionStates(
       accel.acceleration.x, accel.acceleration.y, accel.acceleration.z,
-      gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, 0.01, SHAKE_THRESHOLD,
-      TURN_THRESHOLD, TILT_THRESHOLD);
+      gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, SHAKE_THRESHOLD, TILT_THRESHOLD);
   // Detect MPU motion and change emote state, close current active GIF and play current state GIF
   if (mpuData.isShaking && currentState != DIZZY) {
     Serial.println("Interrupt detected. Switching to DIZZY_EMOTE.");

@@ -1,16 +1,22 @@
 #include "display.h"
 
 Adafruit_SSD1351 oled = Adafruit_SSD1351(DISPLAY_WIDTH, DISPLAY_HEIGHT, &SPI, CS_PIN, DC_PIN, RST_PIN);
-
+// Initialize the OLED display
 void initializeOLED() {
   SPI.begin(SCLK_PIN, -1, MOSI_PIN, CS_PIN);
-  Serial.println("SPI initialized");
   oled.begin();
-  Serial.println("Display initialized");
+  // Additional check to ensure the display is working
+  if (oled.width() != DISPLAY_WIDTH || oled.height() != DISPLAY_HEIGHT) {
+    Serial.println("Error: Display failed to initialize.");
+    return;
+  }
+
   oled.fillScreen(TFT_BLACK);
   oled.setTextColor(TFT_WHITE);
+  Serial.println("Display initialized");
 }
 
+// Display a message on the screen
 void displayBootMessage(const char *message) {
   int16_t x1, y1;
   uint16_t textWidth, textHeight;
