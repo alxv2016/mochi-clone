@@ -25,6 +25,7 @@ extern GIFData restingGifFiles[];
 
 enum State {
   RESTING,
+  RANDOM,
   DIZZY,
   TILTING
 };

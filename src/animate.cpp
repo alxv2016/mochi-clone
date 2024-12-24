@@ -29,7 +29,6 @@ GIFData gifFiles[] = {
 
 GIFData restingGifFiles[] = {
     {(uint8_t *)LOOK_LEFT_RIGHT_EMOTE, sizeof(LOOK_LEFT_RIGHT_EMOTE)},
-    {(uint8_t *)LOOK_UP_DOWN_EMOTE, sizeof(LOOK_UP_DOWN_EMOTE)},
     {(uint8_t *)REST_EMOTE, sizeof(REST_EMOTE)},
     {(uint8_t *)SLEEPY_EMOTE, sizeof(SLEEPY_EMOTE)},
 };
@@ -193,7 +192,7 @@ void interactRandomGIF() {
     Serial.println("Currently resting, Playing random resting GIF.");
     gifData = restingGifFiles[randomRestIndex].data;
     gifSize = restingGifFiles[randomRestIndex].size;
-    currentState = RESTING;
+    currentState = RANDOM;
   } else {
     int randomIndex = random(0, TOTAL_GIFS);
     Serial.println("Currently resting. Playing random GIF.");
