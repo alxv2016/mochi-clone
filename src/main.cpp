@@ -1,6 +1,6 @@
 #include <Arduino.h>
-#include "animate.h"
 #include "display.h"
+#include "animate.h"
 #include "motion.h"
 
 void setup() {
@@ -8,14 +8,12 @@ void setup() {
   Serial.println("Initializing MPU6050");
   initializeOLED();
   initializeMPU6050();
-  initializeGIF();
+  initializeGIFContext();
   displayBootMessage("ALXV");
-  delay(3000);
+  delay(2000);
 }
 
 void loop() {
-  // Handle GIF interaction based on shaking
-  interactRandomGIF();
-  // Allow other tasks to run
-  delay(1000); // Optional small delay to avoid excessive CPU usage
+  initializeEmotes();
+  delay(1000);
 }

@@ -5,7 +5,6 @@
 #include "display.h"
 #include "emojis.h"
 
-// Global objects
 extern AnimatedGIF gif;
 
 struct GIFContext {
@@ -16,12 +15,12 @@ struct GIFContext {
 };
 
 struct GIFData {
-  uint8_t* data; // Pointer to the GIF data
-  size_t size;   // Size of the GIF data
+  uint8_t* data;
+  size_t size;
 };
-// Declare the array (no definition here, just a declaration)
-extern GIFData gifFiles[];
-extern GIFData restingGifFiles[];
+
+extern GIFData randomEmotes[];
+extern GIFData restingEmotes[];
 
 enum State {
   RESTING,
@@ -31,15 +30,15 @@ enum State {
 };
 
 // GIF SETTINGS
-#define GIF_FPS 15
 #define GIF_HEIGHT 128
 #define GIF_WIDTH 128
-#define FRAME_DELAY_MICROSECONDS (1000000 / GIF_FPS)
-// Define the macro to count the number of GIFs in the array
-#define TOTAL_GIFS (sizeof(gifFiles) / sizeof(gifFiles[0]))
-#define TOTAL_RESTING_GIFS (sizeof(restingGifFiles) / sizeof(restingGifFiles[0]))
-#define REST_EMOTE rest
+// Frame delay timing (15 FPS)
+#define FRAME_DELAY_MICROSECONDS (1000000 / 15)
+// Define the macro to count the number of GIFs in each array
+#define RANDOM_EMOTES (sizeof(randomEmotes) / sizeof(randomEmotes[0]))
+#define RESTING_EMOTES (sizeof(restingEmotes) / sizeof(restingEmotes[0]))
 // Array of GIFs
+#define REST_EMOTE rest
 #define LOOK_LEFT_RIGHT_EMOTE look_left_right
 #define LOOK_UP_DOWN_EMOTE look_up_down
 #define UWU_EMOTE uwu
@@ -55,12 +54,9 @@ enum State {
 #define CRY_EMOTE cry
 #define ANGRY_EMOTE angry
 
-// Function declarations
-void cleanupGIFContext(void);
-void GIFDraw(GIFDRAW *pDraw);
+void initializeGIFContext();
 void playGIF(uint8_t* gifData, size_t gifSize, bool loop);
-void initializeGIF(void) ;
 void printMemoryStats(void);
-void interactRandomGIF(void);
+void initializeEmotes(void);
 
 #endif
