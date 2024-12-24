@@ -5,7 +5,7 @@ sensors_event_t accel, gyro, temp;
 bool mpuInitialized = false;
 
 unsigned long lastCaptureTime = 0; // Variable to store the last capture time
-const unsigned long captureInterval = 500; // Interval in milliseconds
+constexpr unsigned long captureDebounceDelay = 100; // Interval in milliseconds
 constexpr unsigned long debounceDelay = 500; // 500 milliseconds debounce delay
 
 void initializeMPU6050() {
@@ -28,7 +28,7 @@ void captureMPUData() {
     return;
   }
   unsigned long currentTime = millis();
-  if (currentTime - lastCaptureTime >= captureInterval) {
+  if (currentTime - lastCaptureTime >= captureDebounceDelay) {
     mpu.getEvent(&accel, &gyro, &temp);
     lastCaptureTime = currentTime; // Update the last capture time
   }
@@ -122,7 +122,7 @@ ShakeOrientationData detectShakeAndOrientation(float accelX, float accelY,
   static unsigned long lastTurnTime = 0;
   static unsigned long lastTiltTime = 0;
 
-  const unsigned long RESET_TIMEOUT = RESET_TIMEOUT;
+  const unsigned long RESET_TIMEOUT = 2000;
   unsigned long currentTime = millis();
 
   // Calculate combined magnitude

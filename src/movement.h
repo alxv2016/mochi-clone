@@ -30,7 +30,7 @@ struct ShakeOrientationData {
 #define MOVEMENT_SCALING 5
 #define SHAKE_THRESHOLD 15
 #define TURN_THRESHOLD 25
-#define TILT_THRESHOLD 30
+#define TILT_THRESHOLD 25
 
 // Function prototypes
 void initializeMPU6050(void);

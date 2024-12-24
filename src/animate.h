@@ -23,10 +23,18 @@ struct GIFData {
 extern GIFData gifFiles[];
 extern GIFData restingGifFiles[];
 
+enum State {
+  RESTING,
+  DIZZY,
+  LOOKING,
+  TILTING
+};
+
 // GIF SETTINGS
 #define GIF_FPS 15
 #define GIF_HEIGHT 128
 #define GIF_WIDTH 128
+#define FRAME_DELAY_MICROSECONDS (1000000 / GIF_FPS)
 // Define the macro to count the number of GIFs in the array
 #define TOTAL_GIFS (sizeof(gifFiles) / sizeof(gifFiles[0]))
 #define TOTAL_RESTING_GIFS (sizeof(restingGifFiles) / sizeof(restingGifFiles[0]))

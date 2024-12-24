@@ -10,10 +10,8 @@ ShakeOrientationData mpuData;
 constexpr size_t maxCanvasWidth = GIF_WIDTH;   // Max width of GIFs
 constexpr size_t maxCanvasHeight = GIF_HEIGHT; // Max height of GIFs
 constexpr size_t frameBufferSize = maxCanvasWidth * maxCanvasHeight * 2; // 2 bytes per pixel (RGB565)
-bool isDizzy = false;
-bool isLooking = false;
-bool isTilting = false;
-bool isResting = true;
+
+State currentState = RESTING;
 
 GIFData gifFiles[] = {
     {(uint8_t *)UWU_EMOTE, sizeof(UWU_EMOTE)},
@@ -84,6 +82,30 @@ void GIFDraw(GIFDRAW *pDraw) {
   }
 }
 
+bool handleMPUData() {
+  captureMPUData();
+  mpuData = detectShakeAndOrientation(accel.acceleration.x, accel.acceleration.y,
+              accel.acceleration.z, gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, 0.01, SHAKE_THRESHOLD, TURN_THRESHOLD, TILT_THRESHOLD);
+
+  if (mpuData.isShaking && currentState != DIZZY) {
+    Serial.println("Interrupt detected. Switching to DIZZY_EMOTE.");
+    cleanupGIFContext();
+    currentState = DIZZY;
+    return true;
+  } else if (mpuData.isTurning && currentState != LOOKING) {
+    Serial.println("Interrupt detected. Switching to LOOK.");
+    cleanupGIFContext();
+    currentState = LOOKING;
+    return true;
+  } else if (mpuData.isTilting && currentState != TILTING) {
+    Serial.println("Interrupt detected. Switching to TILTING.");
+    cleanupGIFContext();
+    currentState = TILTING;
+    return true;
+  }
+  return false;
+}
+
 void playGIF(uint8_t *gifData, size_t gifSize, bool loop = false) {
   // Attempt to open the GIF file from the given data and size, and set up
   // drawing using GIFDraw. If the open operation fails, the function will
@@ -122,7 +144,7 @@ void playGIF(uint8_t *gifData, size_t gifSize, bool loop = false) {
   gif.setFrameBuf(gifContext.sharedFrameBuffer);
 
   const int targetFPS = GIF_FPS; // Set the target FPS
-  const int frameDelay = 1000000 / targetFPS; // Microseconds per frame (1 second = 1000000 microseconds)
+  const int frameDelay = FRAME_DELAY_MICROSECONDS; // Microseconds per frame (1 second = 1000000 microseconds)
   unsigned long previousTime = 0; // Track the time of the previous frame
   unsigned long currentTime = 0;
 
@@ -131,24 +153,9 @@ void playGIF(uint8_t *gifData, size_t gifSize, bool loop = false) {
     while (gif.playFrame(false, nullptr)) {
       currentTime = micros(); // Get the current time in microseconds
       // Capture MPU6050 data and detect shake and orientation
-      captureMPUData();
-      mpuData = detectShakeAndOrientation(accel.acceleration.x, accel.acceleration.y,
-                  accel.acceleration.z, gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, 0.01, SHAKE_THRESHOLD, TURN_THRESHOLD, TILT_THRESHOLD);
-
-      if (mpuData.isShaking && !isDizzy) {
-        Serial.println("Interrupt detected. Switching to DIZZY_EMOTE.");
-        cleanupGIFContext();
-        return; // Exit to play the new GIF
-      } else if (mpuData.isTurning && !isLooking) {
-        Serial.println("Interrupt detected. Switching to LOOK.");
-        cleanupGIFContext();
-        return; // Exit to play the new GIF
-      } else if (mpuData.isTilting && !isTilting) {
-        Serial.println("Interrupt detected. Switching to TITLING.");
-        cleanupGIFContext();
-        return; // Exit to play the new GIF
+       if (handleMPUData()) {
+        return;
       }
-
       // Wait for the next frame based on the desired FPS
       if (currentTime - previousTime >= frameDelay) {
         previousTime = currentTime; // Update the previous time
@@ -170,40 +177,40 @@ void playGIF(uint8_t *gifData, size_t gifSize, bool loop = false) {
 void interactRandomGIF() {
   // Randomly select a GIF file
   if (mpuData.isShaking) {
-    isDizzy = true;
+    currentState = DIZZY;
     Serial.println("Shaking detected. Playing DIZZY_EMOTE and stopping current GIF.");
     playGIF((uint8_t *)DIZZY_EMOTE, sizeof(DIZZY_EMOTE), false);
-    isDizzy = false;
+    currentState = RESTING;
     return;
   } else if (mpuData.isTilting) {
-    isTilting = true;
+    currentState = TILTING;
     Serial.println("Tilting detected. Playing TILTING GIF.");
     playGIF((uint8_t *)LOOK_UP_DOWN_EMOTE, sizeof(LOOK_UP_DOWN_EMOTE), false);
-    isTilting = false;
+    currentState = RESTING;
     return;
   } else if (mpuData.isTurning) {
-    isLooking = true;
+    currentState = LOOKING;
     Serial.println("Turning detected. Playing LOOK GIF.");
     playGIF((uint8_t *)LOOK_LEFT_RIGHT_EMOTE, sizeof(LOOK_LEFT_RIGHT_EMOTE), false);
-    isLooking = false;
+    currentState = RESTING;
     return;
   }
 
   uint8_t *gifData;
   size_t gifSize;
 
-  if (isResting) {
+  if (currentState == RESTING) {
     int randomRestIndex = random(0, TOTAL_RESTING_GIFS);
-    Serial.println("No shaking detected. Playing random resting GIF.");
+    Serial.println("Currently resting, Playing random resting GIF.");
     gifData = restingGifFiles[randomRestIndex].data;
     gifSize = restingGifFiles[randomRestIndex].size;
-    isResting = false;
+    currentState = RESTING;
   } else {
     int randomIndex = random(0, TOTAL_GIFS);
-    Serial.println("Shaking stopped. Playing random GIF.");
+    Serial.println("Currently resting. Playing random GIF.");
     gifData = gifFiles[randomIndex].data;
     gifSize = gifFiles[randomIndex].size;
-    isResting = true;
+    currentState = RESTING;
   }
 
   playGIF(gifData, gifSize, false);
