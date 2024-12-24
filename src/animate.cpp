@@ -12,6 +12,7 @@ constexpr size_t maxCanvasHeight = GIF_HEIGHT; // Max height of GIFs
 constexpr size_t frameBufferSize = maxCanvasWidth * maxCanvasHeight * 2; // 2 bytes per pixel (RGB565)
 bool isDizzy = false;
 bool isLooking = false;
+bool isTilting = false;
 bool isResting = true;
 
 GIFData gifFiles[] = {
@@ -132,16 +133,21 @@ void playGIF(uint8_t *gifData, size_t gifSize, bool loop = false) {
       // Capture MPU6050 data and detect shake and orientation
       captureMPUData();
       mpuData = detectShakeAndOrientation(accel.acceleration.x, accel.acceleration.y,
-                  accel.acceleration.z, gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, 0.01, SHAKE_THRESHOLD, TURN_THRESHOLD);
+                  accel.acceleration.z, gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, 0.01, SHAKE_THRESHOLD, TURN_THRESHOLD, TILT_THRESHOLD);
 
       if (mpuData.isShaking && !isDizzy) {
         Serial.println("Interrupt detected. Switching to DIZZY_EMOTE.");
+        isDizzy = false;
         cleanupGIFContext();
         return; // Exit to play the new GIF
-      }
-
-      if (mpuData.isTurning && !isLooking) {
+      } else if (mpuData.isTurning && !isLooking) {
         Serial.println("Interrupt detected. Switching to LOOK.");
+        isLooking = false;
+        cleanupGIFContext();
+        return; // Exit to play the new GIF
+      } else if (mpuData.isTilting && !isTilting) {
+        Serial.println("Interrupt detected. Switching to TITLING.");
+        isTilting = false;
         cleanupGIFContext();
         return; // Exit to play the new GIF
       }
@@ -160,9 +166,6 @@ void playGIF(uint8_t *gifData, size_t gifSize, bool loop = false) {
       gif.reset(); // Reset the GIF to the first frame for looping
     }
   } while (loop);
-
-  isDizzy = false;
-  isLooking = false;
   // Cleanup after the GIF finishes playing
   cleanupGIFContext();
 }
@@ -174,9 +177,12 @@ void interactRandomGIF() {
     Serial.println("Shaking detected. Playing DIZZY_EMOTE and stopping current GIF.");
     playGIF((uint8_t *)DIZZY_EMOTE, sizeof(DIZZY_EMOTE), false);
     return;
-  }
-
-  if (mpuData.isTurning) {
+  } else if (mpuData.isTilting) {
+    isTilting = true;
+    Serial.println("Tilting detected. Playing TILTING GIF.");
+    playGIF((uint8_t *)LOOK_UP_DOWN_EMOTE, sizeof(LOOK_UP_DOWN_EMOTE), false);
+    return;
+  } else if (mpuData.isTurning) {
     isLooking = true;
     Serial.println("Turning detected. Playing LOOK GIF.");
     playGIF((uint8_t *)LOOK_LEFT_RIGHT_EMOTE, sizeof(LOOK_LEFT_RIGHT_EMOTE), false);

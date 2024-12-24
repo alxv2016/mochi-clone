@@ -2,8 +2,6 @@
 
 Adafruit_MPU6050 mpu;
 sensors_event_t accel, gyro, temp;
-bool isShaking = false;
-bool isOrienting = false;
 bool mpuInitialized = false;
 
 unsigned long lastCaptureTime = 0; // Variable to store the last capture time
@@ -66,7 +64,11 @@ OrientationData calculateOrientation(float accelX, float accelY, float accelZ,
   tilt = alpha * tilt + (1 - alpha) * accelPitch;
   rotate = alpha * rotate + (1 - alpha) * accelRoll;
 
-  return {round(turnDegrees), round(tilt), round(rotate)};
+  int roundedTurn = round(turnDegrees);
+  int roundedTilt = round(tilt);
+  int roundedRotate = round(rotate);
+
+  return {roundedTurn, roundedTilt, roundedRotate};
 }
 
 // General function to detect a state (e.g., shaking or turning)
@@ -74,7 +76,7 @@ bool detectState(float magnitude, float threshold, bool &currentState,
                  unsigned long &lastStateTime, const char *stateName,
                  const char *stopMessage) {
                   
-  const unsigned long RESET_TIMEOUT = 2000;
+  const unsigned long RESET_TIMEOUT = REST_TIMEOUT;
 
   if (magnitude >= threshold) {
     if (!currentState) {
@@ -110,22 +112,22 @@ ShakeOrientationData detectShakeAndOrientation(float accelX, float accelY,
                                                float accelZ, float gyroX,
                                                float gyroY, float gyroZ,
                                                float dt, int shakeThreshold,
-                                               float turnThreshold) {
+                                               float turnThreshold, float tiltThreshold) {
 
   static bool isShaking = false;
   static bool isTurning = false;
+  static bool isTilting = false;
   static unsigned long lastShakeTime = 0;
   static unsigned long lastTurnTime = 0;
+  static unsigned long lastTiltTime = 0;
 
-  const unsigned long RESET_TIMEOUT = 2000;
+  const unsigned long RESET_TIMEOUT = RESET_TIMEOUT;
 
   // Calculate combined magnitude
-  int combinedMagnitude =
-      calculateCombinedMagnitude(accelX, accelY, accelZ, gyroX, gyroY, gyroZ);
+  int combinedMagnitude = calculateCombinedMagnitude(accelX, accelY, accelZ, gyroX, gyroY, gyroZ);
 
   // Detect shake state
-  detectState(combinedMagnitude, shakeThreshold, isShaking, lastShakeTime,
-              "Shaking", "Shaking stopped.");
+  detectState(combinedMagnitude, shakeThreshold, isShaking, lastShakeTime, "Shaking", "Shaking stopped.");
   detectNoState(isShaking, lastShakeTime, RESET_TIMEOUT, "Shaking stopped.");
 
   // Calculate orientation
@@ -136,5 +138,9 @@ ShakeOrientationData detectShakeAndOrientation(float accelX, float accelY,
   detectState(abs(orientation.turn), turnThreshold, isTurning, lastTurnTime, "Turn", "Turn stopped.");
   detectNoState(isTurning, lastTurnTime, RESET_TIMEOUT, "Turn stopped.");
 
-  return {isShaking, orientation, isTurning};
+  // Detect tilt state
+  detectState(abs(orientation.tilt), tiltThreshold, isTilting, lastTiltTime, "Tilt", "Tilt stopped.");
+  detectNoState(isTilting, lastTiltTime, RESET_TIMEOUT, "Tilt stopped.");
+
+  return {isShaking, isTurning, isTilting, orientation};
 }
