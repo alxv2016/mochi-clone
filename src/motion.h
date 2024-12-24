@@ -32,6 +32,9 @@ struct ShakeOrientationData {
 // Function prototypes
 void initializeMPU6050(void);
 void captureMPUData(void);
+void gyroCalibration(int calibration_time);
+void getGyro(float &calGyroX, float &calGyroY, float &calGyroZ, float gyroX, float gyroY, float gyroZ);
+
 ShakeOrientationData detectShakeAndOrientation(float accelX, float accelY, float accelZ,
                                                float gyroX, float gyroY, float gyroZ,
                                                float dt, int shakeThreshold, float turnThreshold, float tiltThreshold);
