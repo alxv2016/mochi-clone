@@ -10,15 +10,13 @@ extern sensors_event_t accel, gyro, temp;
 
 // Data structure to hold orientation data
 struct OrientationData {
-    int turn;
-    int tilt;
-    int rotate;
+    float pitch;
+    float roll;
 };
 
 // Data structure to hold shake and orientation states
 struct ShakeOrientationData {
     bool isShaking;
-    bool isTurning;
     bool isTilting;
     OrientationData orientation;
 };
@@ -29,8 +27,8 @@ struct ShakeOrientationData {
 #define REST_TIMEOUT 1000
 #define MOVEMENT_SCALING 5
 #define SHAKE_THRESHOLD 15
-#define TURN_THRESHOLD 25
-#define TILT_THRESHOLD 25
+#define TURN_THRESHOLD 25.00
+#define TILT_THRESHOLD 25.00
 
 // Function prototypes
 void initializeMPU6050(void);

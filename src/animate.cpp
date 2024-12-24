@@ -92,11 +92,6 @@ bool handleMPUData() {
     cleanupGIFContext();
     currentState = DIZZY;
     return true;
-  } else if (mpuData.isTurning && currentState != LOOKING) {
-    Serial.println("Interrupt detected. Switching to LOOK.");
-    cleanupGIFContext();
-    currentState = LOOKING;
-    return true;
   } else if (mpuData.isTilting && currentState != TILTING) {
     Serial.println("Interrupt detected. Switching to TILTING.");
     cleanupGIFContext();
@@ -186,12 +181,6 @@ void interactRandomGIF() {
     currentState = TILTING;
     Serial.println("Tilting detected. Playing TILTING GIF.");
     playGIF((uint8_t *)LOOK_UP_DOWN_EMOTE, sizeof(LOOK_UP_DOWN_EMOTE), false);
-    currentState = RESTING;
-    return;
-  } else if (mpuData.isTurning) {
-    currentState = LOOKING;
-    Serial.println("Turning detected. Playing LOOK GIF.");
-    playGIF((uint8_t *)LOOK_LEFT_RIGHT_EMOTE, sizeof(LOOK_LEFT_RIGHT_EMOTE), false);
     currentState = RESTING;
     return;
   }

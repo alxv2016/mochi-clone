@@ -43,33 +43,24 @@ int calculateCombinedMagnitude(float accelX, float accelY, float accelZ,
   return (int)round(dynamicAccelMagnitude + gyroMagnitude);
 }
 
-// Function to calculate orientation using accelerometer and gyroscope data
 OrientationData calculateOrientation(float accelX, float accelY, float accelZ,
                                      float gyroX, float gyroY, float gyroZ,
                                      float dt) {
-  static float tilt = 0.0;
-  static float rotate = 0.0;
-  static float turn = 0.0;
+  // Calculate pitch and roll from accelerometer data
+  float pitch = atan2(accelY, sqrt(accelX * accelX + accelZ * accelZ)) * 180.0 / M_PI;
+  float roll = atan2(-accelX, sqrt(accelY * accelY + accelZ * accelZ)) * 180.0 / M_PI;
 
-  float accelPitch =
-      atan2(accelY, sqrt(accelX * accelX + accelZ * accelZ)) * 180 / M_PI;
-  float accelRoll = atan2(-accelX, accelZ) * 180 / M_PI;
+  // Apply absolute value and round to the nearest whole number
+  pitch = round(abs(pitch));
+  roll = round(abs(roll));
 
-  tilt += gyroX * dt;
-  rotate += gyroY * dt;
-  turn += gyroZ * dt;
+  // Log readings
+  // Serial.print("Pitch: ");
+  // Serial.print(pitch);
+  // Serial.print(", Roll: ");
+  // Serial.println(roll);
 
-  float turnDegrees = turn * 180 / M_PI;
-
-  const float alpha = 0.98;
-  tilt = alpha * tilt + (1 - alpha) * accelPitch;
-  rotate = alpha * rotate + (1 - alpha) * accelRoll;
-
-  int roundedTurn = round(turnDegrees);
-  int roundedTilt = round(tilt);
-  int roundedRotate = round(rotate);
-
-  return {roundedTurn, roundedTilt, roundedRotate};
+  return {pitch, roll};
 }
 
 // General function to detect a state (e.g., shaking or turning)
@@ -116,10 +107,8 @@ ShakeOrientationData detectShakeAndOrientation(float accelX, float accelY,
                                                float turnThreshold, float tiltThreshold) {
 
   static bool isShaking = false;
-  static bool isTurning = false;
   static bool isTilting = false;
   static unsigned long lastShakeTime = 0;
-  static unsigned long lastTurnTime = 0;
   static unsigned long lastTiltTime = 0;
 
   const unsigned long RESET_TIMEOUT = 2000;
@@ -139,21 +128,13 @@ ShakeOrientationData detectShakeAndOrientation(float accelX, float accelY,
   OrientationData orientation =
       calculateOrientation(accelX, accelY, accelZ, gyroX, gyroY, gyroZ, dt);
 
-  // Detect turn state with debounce
-  if (currentTime - lastTurnTime >= debounceDelay) {
-    if (detectState(abs(orientation.turn), turnThreshold, isTurning, lastTurnTime, "Turn", "Turn stopped.")) {
-      lastTurnTime = currentTime;
-    }
-  }
-  detectNoState(isTurning, lastTurnTime, RESET_TIMEOUT, "Turn stopped.");
-
   // Detect tilt state with debounce
   if (currentTime - lastTiltTime >= debounceDelay) {
-    if (detectState(abs(orientation.tilt), tiltThreshold, isTilting, lastTiltTime, "Tilt", "Tilt stopped.")) {
+    if (detectState(abs(orientation.pitch), tiltThreshold, isTilting, lastTiltTime, "Tilt", "Tilt stopped.")) {
       lastTiltTime = currentTime;
     }
   }
   detectNoState(isTilting, lastTiltTime, RESET_TIMEOUT, "Tilt stopped.");
 
-  return {isShaking, isTurning, isTilting, orientation};
+  return {isShaking, isTilting, orientation};
 }
