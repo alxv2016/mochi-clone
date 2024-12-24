@@ -137,17 +137,14 @@ void playGIF(uint8_t *gifData, size_t gifSize, bool loop = false) {
 
       if (mpuData.isShaking && !isDizzy) {
         Serial.println("Interrupt detected. Switching to DIZZY_EMOTE.");
-        isDizzy = false;
         cleanupGIFContext();
         return; // Exit to play the new GIF
       } else if (mpuData.isTurning && !isLooking) {
         Serial.println("Interrupt detected. Switching to LOOK.");
-        isLooking = false;
         cleanupGIFContext();
         return; // Exit to play the new GIF
       } else if (mpuData.isTilting && !isTilting) {
         Serial.println("Interrupt detected. Switching to TITLING.");
-        isTilting = false;
         cleanupGIFContext();
         return; // Exit to play the new GIF
       }
@@ -176,16 +173,19 @@ void interactRandomGIF() {
     isDizzy = true;
     Serial.println("Shaking detected. Playing DIZZY_EMOTE and stopping current GIF.");
     playGIF((uint8_t *)DIZZY_EMOTE, sizeof(DIZZY_EMOTE), false);
+    isDizzy = false;
     return;
   } else if (mpuData.isTilting) {
     isTilting = true;
     Serial.println("Tilting detected. Playing TILTING GIF.");
     playGIF((uint8_t *)LOOK_UP_DOWN_EMOTE, sizeof(LOOK_UP_DOWN_EMOTE), false);
+    isTilting = false;
     return;
   } else if (mpuData.isTurning) {
     isLooking = true;
     Serial.println("Turning detected. Playing LOOK GIF.");
     playGIF((uint8_t *)LOOK_LEFT_RIGHT_EMOTE, sizeof(LOOK_LEFT_RIGHT_EMOTE), false);
+    isLooking = false;
     return;
   }
 

@@ -26,7 +26,7 @@ struct ShakeOrientationData {
 #define DISPLAY_WIDTH 128
 #define DISPLAY_HEIGHT 128
 // Movement scaling
-#define REST_TIMEOUT 3000
+#define REST_TIMEOUT 1000
 #define MOVEMENT_SCALING 5
 #define SHAKE_THRESHOLD 15
 #define TURN_THRESHOLD 25

@@ -5,7 +5,8 @@ sensors_event_t accel, gyro, temp;
 bool mpuInitialized = false;
 
 unsigned long lastCaptureTime = 0; // Variable to store the last capture time
-const unsigned long captureInterval = 100; // Interval in milliseconds
+const unsigned long captureInterval = 500; // Interval in milliseconds
+constexpr unsigned long debounceDelay = 500; // 500 milliseconds debounce delay
 
 void initializeMPU6050() {
   // Try to initialize!
@@ -122,24 +123,36 @@ ShakeOrientationData detectShakeAndOrientation(float accelX, float accelY,
   static unsigned long lastTiltTime = 0;
 
   const unsigned long RESET_TIMEOUT = RESET_TIMEOUT;
+  unsigned long currentTime = millis();
 
   // Calculate combined magnitude
   int combinedMagnitude = calculateCombinedMagnitude(accelX, accelY, accelZ, gyroX, gyroY, gyroZ);
-
-  // Detect shake state
-  detectState(combinedMagnitude, shakeThreshold, isShaking, lastShakeTime, "Shaking", "Shaking stopped.");
+  // Detect shake state with debounce
+  if (currentTime - lastShakeTime >= debounceDelay) {
+    if (detectState(combinedMagnitude, shakeThreshold, isShaking, lastShakeTime, "Shaking", "Shaking stopped.")) {
+      lastShakeTime = currentTime;
+    }
+  }
   detectNoState(isShaking, lastShakeTime, RESET_TIMEOUT, "Shaking stopped.");
 
   // Calculate orientation
   OrientationData orientation =
       calculateOrientation(accelX, accelY, accelZ, gyroX, gyroY, gyroZ, dt);
 
-  // Detect turn state
-  detectState(abs(orientation.turn), turnThreshold, isTurning, lastTurnTime, "Turn", "Turn stopped.");
+  // Detect turn state with debounce
+  if (currentTime - lastTurnTime >= debounceDelay) {
+    if (detectState(abs(orientation.turn), turnThreshold, isTurning, lastTurnTime, "Turn", "Turn stopped.")) {
+      lastTurnTime = currentTime;
+    }
+  }
   detectNoState(isTurning, lastTurnTime, RESET_TIMEOUT, "Turn stopped.");
 
-  // Detect tilt state
-  detectState(abs(orientation.tilt), tiltThreshold, isTilting, lastTiltTime, "Tilt", "Tilt stopped.");
+  // Detect tilt state with debounce
+  if (currentTime - lastTiltTime >= debounceDelay) {
+    if (detectState(abs(orientation.tilt), tiltThreshold, isTilting, lastTiltTime, "Tilt", "Tilt stopped.")) {
+      lastTiltTime = currentTime;
+    }
+  }
   detectNoState(isTilting, lastTiltTime, RESET_TIMEOUT, "Tilt stopped.");
 
   return {isShaking, isTurning, isTilting, orientation};
