@@ -1,6 +1,6 @@
 #include "animate.h"
 #include "display.h"
-#include "movement.h"
+#include "motion.h"
 
 // Global variables and constants
 AnimatedGIF gif;

@@ -1,12 +1,11 @@
-#include "movement.h"
+#include "motion.h"
 
 Adafruit_MPU6050 mpu;
 sensors_event_t accel, gyro, temp;
 bool mpuInitialized = false;
 
 unsigned long lastCaptureTime = 0; // Variable to store the last capture time
-constexpr unsigned long captureDebounceDelay = 100; // Interval in milliseconds
-constexpr unsigned long debounceDelay = 500; // 500 milliseconds debounce delay
+const unsigned long debounceDelay = 1000; // 500 milliseconds debounce delay
 
 void initializeMPU6050() {
   // Try to initialize!
@@ -16,9 +15,15 @@ void initializeMPU6050() {
       delay(10);
     }
   }
-  mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
-  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
-  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+  mpu.setAccelerometerRange(MPU6050_RANGE_2_G);
+  mpu.setGyroRange(MPU6050_RANGE_250_DEG);
+  mpu.setHighPassFilter(MPU6050_HIGHPASS_0_63_HZ);
+  mpu.setMotionDetectionThreshold(1);
+  mpu.setMotionDetectionDuration(20);
+  mpu.setInterruptPinLatch(
+      true); // Keep it latched.  Will turn off when reinitialized.
+  mpu.setInterruptPinPolarity(true);
+  mpu.setMotionInterrupt(true);
   mpuInitialized = true;
   Serial.println("MPU6050 Found!");
 }
@@ -27,11 +32,15 @@ void captureMPUData() {
     Serial.println("Error: MPU not initialized.");
     return;
   }
-  unsigned long currentTime = millis();
-  if (currentTime - lastCaptureTime >= captureDebounceDelay) {
-    mpu.getEvent(&accel, &gyro, &temp);
-    lastCaptureTime = currentTime; // Update the last capture time
+
+  if (mpu.getMotionInterruptStatus()) {
+    unsigned long currentTime = millis();
+    if (currentTime - lastCaptureTime >= debounceDelay) {
+      mpu.getEvent(&accel, &gyro, &temp);
+      lastCaptureTime = currentTime; // Update the last capture time
+    }
   }
+
 }
 
 int calculateCombinedMagnitude(float accelX, float accelY, float accelZ,
@@ -47,8 +56,10 @@ OrientationData calculateOrientation(float accelX, float accelY, float accelZ,
                                      float gyroX, float gyroY, float gyroZ,
                                      float dt) {
   // Calculate pitch and roll from accelerometer data
-  float pitch = atan2(accelY, sqrt(accelX * accelX + accelZ * accelZ)) * 180.0 / M_PI;
-  float roll = atan2(-accelX, sqrt(accelY * accelY + accelZ * accelZ)) * 180.0 / M_PI;
+  float pitch =
+      atan2(accelY, sqrt(accelX * accelX + accelZ * accelZ)) * 180.0 / M_PI;
+  float roll =
+      atan2(-accelX, sqrt(accelY * accelY + accelZ * accelZ)) * 180.0 / M_PI;
 
   // Apply absolute value and round to the nearest whole number
   pitch = round(abs(pitch));
@@ -60,6 +71,22 @@ OrientationData calculateOrientation(float accelX, float accelY, float accelZ,
   // Serial.print(", Roll: ");
   // Serial.println(roll);
 
+  // Serial.print("Acceleration X: ");
+  // Serial.print(accelX);
+  // Serial.print(", Y: ");
+  // Serial.print(accelY);
+  // Serial.print(", Z: ");
+  // Serial.print(accelZ);
+  // Serial.println(" m/s^2");
+
+  // Serial.print("Rotation X: ");
+  // Serial.print(gyroX);
+  // Serial.print(", Y: ");
+  // Serial.print(gyroY);
+  // Serial.print(", Z: ");
+  // Serial.print(gyroZ);
+  // Serial.println(" rad/s");
+
   return {pitch, roll};
 }
 
@@ -67,8 +94,8 @@ OrientationData calculateOrientation(float accelX, float accelY, float accelZ,
 bool detectState(float magnitude, float threshold, bool &currentState,
                  unsigned long &lastStateTime, const char *stateName,
                  const char *stopMessage) {
-                  
-  const unsigned long RESET_TIMEOUT = REST_TIMEOUT;
+
+  const unsigned long RESET_TIMEOUT = debounceDelay;
 
   if (magnitude >= threshold) {
     if (!currentState) {
@@ -104,7 +131,8 @@ ShakeOrientationData detectShakeAndOrientation(float accelX, float accelY,
                                                float accelZ, float gyroX,
                                                float gyroY, float gyroZ,
                                                float dt, int shakeThreshold,
-                                               float turnThreshold, float tiltThreshold) {
+                                               float turnThreshold,
+                                               float tiltThreshold) {
 
   static bool isShaking = false;
   static bool isTilting = false;
@@ -115,10 +143,12 @@ ShakeOrientationData detectShakeAndOrientation(float accelX, float accelY,
   unsigned long currentTime = millis();
 
   // Calculate combined magnitude
-  int combinedMagnitude = calculateCombinedMagnitude(accelX, accelY, accelZ, gyroX, gyroY, gyroZ);
+  int combinedMagnitude =
+      calculateCombinedMagnitude(accelX, accelY, accelZ, gyroX, gyroY, gyroZ);
   // Detect shake state with debounce
   if (currentTime - lastShakeTime >= debounceDelay) {
-    if (detectState(combinedMagnitude, shakeThreshold, isShaking, lastShakeTime, "Shaking", "Shaking stopped.")) {
+    if (detectState(combinedMagnitude, shakeThreshold, isShaking, lastShakeTime,
+                    "Shaking", "Shaking stopped.")) {
       lastShakeTime = currentTime;
     }
   }
@@ -130,7 +160,8 @@ ShakeOrientationData detectShakeAndOrientation(float accelX, float accelY,
 
   // Detect tilt state with debounce
   if (currentTime - lastTiltTime >= debounceDelay) {
-    if (detectState(abs(orientation.pitch), tiltThreshold, isTilting, lastTiltTime, "Tilt", "Tilt stopped.")) {
+    if (detectState(abs(orientation.pitch), tiltThreshold, isTilting,
+                    lastTiltTime, "Tilt", "Tilt stopped.")) {
       lastTiltTime = currentTime;
     }
   }

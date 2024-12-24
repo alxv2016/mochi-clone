@@ -1,5 +1,5 @@
-#ifndef MOVEMENT_H
-#define MOVEMENT_H
+#ifndef MOTION_H
+#define MOTION_H
 
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
@@ -24,7 +24,6 @@ struct ShakeOrientationData {
 #define DISPLAY_WIDTH 128
 #define DISPLAY_HEIGHT 128
 // Movement scaling
-#define REST_TIMEOUT 1000
 #define MOVEMENT_SCALING 5
 #define SHAKE_THRESHOLD 15
 #define TURN_THRESHOLD 25.00

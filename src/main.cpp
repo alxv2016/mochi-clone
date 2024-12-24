@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include "animate.h"
 #include "display.h"
-#include "movement.h"
+#include "motion.h"
 
 void setup() {
   Serial.begin(115200);
